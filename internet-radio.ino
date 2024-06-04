@@ -12,96 +12,179 @@ const char* configurationPage = R"rawliteral(<!DOCTYPE html>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Configuration</title>
   </head>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: #bdbdbd;
+      font-family: Verdana, Geneva, Tahoma, sans-serif;
+    }
+
+    .container {
+      width: 100vw;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .wrapper {
+      background-color: #f4f5f7;
+      padding: 0 0 1rem;
+      margin: 1rem;
+    }
+
+    .header {
+      background: #ffffff;
+      text-align: center;
+      font-size: 1.25rem;
+      font-weight: 600;
+      padding: 1rem;
+      margin: 0 0 1rem;
+    }
+
+    label {
+      display: block;
+      margin: 0 0 0.4rem;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    input {
+      padding: 0.7rem;
+      border-radius: 4px;
+      outline: 0;
+      font-size: 1rem;
+      width: 100%;
+      border: 1px solid #2ca838;
+      margin: 0 0 0.5rem;
+    }
+
+    button {
+      padding: 0.75rem 1.5rem;
+      margin: 0.5rem 0 0;
+      outline: 0;
+      border: 0;
+      background: #2ca838;
+      border-radius: 4px;
+      color: #ffffff;
+      font-weight: 700;
+      font-size: 0.9rem;
+      transition: background 0.4s;
+    }
+
+    .buttons {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+
+    button:hover {
+      background: rgb(76, 206, 89);
+    }
+
+    form {
+      padding: 0 1rem;
+    }
+  </style>
   <body>
-    <h2>ESP32 Internet Radio Configuration</h2>
-    <form id="configurationForm">
-      <label for="ssid">Wi-Fi network name:</label><br />
-      <input type="text" id="ssid" name="ssid" required/><br />
+    <div class="container">
+      <div class="wrapper">
+        <div class="header">
+          <span>ESP32 Internet Radio Configuration</span>
+        </div>
+        <form id="configurationForm">
+          <label for="ssid">Wi-Fi network name</label>
+          <input type="text" id="ssid" name="ssid" required />
+          <label for="password">Wi-Fi password</label>
+          <input type="password" id="password" name="password" required />
+          <div id="inputContainer"></div>
+          <div class="buttons">
+            <button type="button" onclick="addInput()">Add new radio</button>
+            <button type="button" onclick="removeInput()">
+              Delete last radio
+            </button>
+            <button type="submit">Save configuration</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    <script>
+      let counter = 1;
+      const inputContainer = document.getElementById("inputContainer");
+      const networkName = document.getElementById("ssid");
+      const password = document.getElementById("password");
 
-      <label for="password">Wi-Fi password:</label><br />
-      <input type="password" id="password" name="password" required/><br /><br />
+      document
+        .getElementById("configurationForm")
+        .addEventListener("submit", function (event) {
+          event.preventDefault();
 
-      <div
-        id="inputContainer"
-        style="display: flex; flex-direction: column; width: 20rem"
-      ></div>
+          const inputs = document.querySelectorAll(".textInput");
+          const radios = [];
 
-      <button type="button" onclick="addInput()">Add new radio link</button>
-      <button type="button" onclick="removeInput()">
-        Delete last radio link
-      </button>
-      <button type="submit">Save configuration</button>
-
-      <script>
-        let counter = 1;
-        const inputContainer = document.getElementById("inputContainer");
-        const networkName = document.getElementById("ssid");
-        const password = document.getElementById("password");
-
-        document
-          .getElementById("configurationForm")
-          .addEventListener("submit", function (event) {
-            event.preventDefault();
-
-            const inputs = document.querySelectorAll(".textInput");
-            const radios = [];
-
-            inputs.forEach((input) => {
-              radios.push(input.value);
-            });
-
-            const urlWithParams = `http://192.168.1.1/new?ssid=${
-              networkName.value
-            }&password=${password.value}&nradios=${
-              radios.length
-            }&radios=${radios.join(",")}`;
-
-            fetch(urlWithParams, {
-              method: "POST",
-            })
-              .then((response) => response)
-              .then((data) => {
-                console.log("Success:", data);
-                alert("Configuration saved successfully!");
-              })
-              .catch((error) => {
-                console.error("Error:", error);
-                alert("An error occurred while saving the configuration!");
-              });
+          inputs.forEach((input) => {
+            radios.push(input.value);
           });
 
-        function addInput() {
-          const newLabel = document.createElement("label");
-          newLabel.htmlFor = `radio${counter}`;
-          newLabel.textContent = `Radio ${counter}:`;
-          inputContainer.appendChild(newLabel);
+          const urlWithParams = `http://192.168.1.1/new?ssid=${
+            networkName.value
+          }&password=${password.value}&nradios=${
+            radios.length
+          }&radios=${radios.join(",")}`;
 
-          const newInput = document.createElement("input");
-          newInput.type = "text";
-          newInput.className = "textInput";
-          newInput.placeholder = "Radio stream link";
-          newInput.required = true;
-          inputContainer.appendChild(newInput);
+          fetch(urlWithParams, {
+            method: "POST",
+          })
+            .then((response) => response)
+            .then((data) => {
+              console.log("Success:", data);
+              alert("Configuration saved successfully!");
+            })
+            .catch((error) => {
+              console.error("Error:", error);
+              alert("An error occurred while saving the configuration!");
+            });
+        });
 
-          counter++;
+      function addInput() {
+        const newLabel = document.createElement("label");
+        newLabel.htmlFor = `radio${counter}`;
+        newLabel.textContent = `Radio ${counter}`;
+        inputContainer.appendChild(newLabel);
+
+        const newInput = document.createElement("input");
+        newInput.type = "text";
+        newInput.className = "textInput";
+        newInput.placeholder = "Radio stream link";
+        newInput.required = true;
+        inputContainer.appendChild(newInput);
+
+        counter++;
+      }
+
+      function removeInput() {
+        if (counter > 2) {
+          const inputs = document.querySelectorAll(".textInput");
+          const lastInput = inputs[inputs.length - 1];
+          const lastLabel = lastInput.previousElementSibling;
+
+          inputContainer.removeChild(lastInput);
+          inputContainer.removeChild(lastLabel);
+
+          counter--;
         }
+      }
 
-        function removeInput() {
-          if (counter > 2) {
-            const inputs = document.querySelectorAll(".textInput");
-            const lastInput = inputs[inputs.length - 1];
-            const lastLabel = lastInput.previousElementSibling;
-
-            inputContainer.removeChild(lastInput);
-            inputContainer.removeChild(lastLabel);
-
-            counter--;
-          }
-        }
-
-        addInput();
-      </script>
-    </form>
+      addInput();
+    </script>
   </body>
 </html>
 )rawliteral";
