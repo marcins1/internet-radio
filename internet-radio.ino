@@ -1,5 +1,6 @@
 #include <WiFi.h>
 #include <ESPAsyncWebServer.h>
+#include <ArduinoJson.h>
 #include <vector>
 #include <string>
 #include "AudioTools.h"
@@ -107,11 +108,10 @@ const char* configurationPage = R"rawliteral(<!DOCTYPE html>
           <input type="password" id="password" name="password" required />
           <div id="inputContainer"></div>
           <div class="buttons">
-            <button type="button" onclick="addInput()">Add new radio</button>
-            <button type="button" onclick="removeInput()">
-              Delete last radio
-            </button>
-            <button type="submit">Save configuration</button>
+            <button type="button" onclick="addInput()">Add radio</button>
+            <button type="button" onclick="removeInput()">Delete radio</button>
+            <button type="button" onclick="loadConfiguration()">Load</button>
+            <button type="submit">Save</button>
           </div>
         </form>
       </div>
@@ -127,7 +127,7 @@ const char* configurationPage = R"rawliteral(<!DOCTYPE html>
         .addEventListener("submit", function (event) {
           event.preventDefault();
 
-          const inputs = document.querySelectorAll(".textInput");
+          const inputs = inputContainer.querySelectorAll("input");
           const radios = [];
 
           inputs.forEach((input) => {
@@ -143,9 +143,7 @@ const char* configurationPage = R"rawliteral(<!DOCTYPE html>
           fetch(urlWithParams, {
             method: "POST",
           })
-            .then((response) => response)
-            .then((data) => {
-              console.log("Success:", data);
+            .then(() => {
               alert("Configuration saved successfully!");
             })
             .catch((error) => {
@@ -162,7 +160,6 @@ const char* configurationPage = R"rawliteral(<!DOCTYPE html>
 
         const newInput = document.createElement("input");
         newInput.type = "text";
-        newInput.className = "textInput";
         newInput.placeholder = "Radio stream link";
         newInput.required = true;
         inputContainer.appendChild(newInput);
@@ -172,7 +169,7 @@ const char* configurationPage = R"rawliteral(<!DOCTYPE html>
 
       function removeInput() {
         if (counter > 2) {
-          const inputs = document.querySelectorAll(".textInput");
+          const inputs = inputContainer.querySelectorAll("input");
           const lastInput = inputs[inputs.length - 1];
           const lastLabel = lastInput.previousElementSibling;
 
@@ -181,6 +178,40 @@ const char* configurationPage = R"rawliteral(<!DOCTYPE html>
 
           counter--;
         }
+      }
+
+      function clearInputs() {
+        while (inputContainer.hasChildNodes()) {
+          inputContainer.removeChild(inputContainer.firstChild);
+        }
+        counter = 1;
+      }
+
+      function loadConfiguration() {
+        fetch("http://192.168.1.1/configuration", {
+          method: "GET",
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.radios.length > 0) {
+              clearInputs();
+              networkName.value = data.ssid;
+              password.value = data.password;
+              data.radios.forEach((radio) => {
+                addInput();
+                document.querySelector("input:last-child").value = radio;
+              });
+              setTimeout(() => {
+                alert("Configuration loaded successfully!");
+              }, 100);
+            } else {
+              alert("No configuration found!");
+            }
+          })
+          .catch((error) => {
+            console.error("Error:", error);
+            alert("An error occurred while loading the configuration!");
+          });
       }
 
       addInput();
@@ -209,6 +240,9 @@ int currentStationIndex = 0;
 
 bool configurationMode = true;
 bool radioConfigured = false;
+
+char* wifi_ssid = "";
+char* wifi_password = "";
 
 URLStream url("UNKNOWN", "UNKNOWN");
 I2SStream i2s; // final output of decoded stream
@@ -262,6 +296,8 @@ void setup() {
       radiosVector.push_back(std::string(token));
       token = strtok(NULL, ",");
     }
+    wifi_ssid = newSSID;
+    wifi_password = newPassword;
     url.setSSID(newSSID);
     url.setPassword(newPassword);
     numberOfRadios = atoi(numberOfRadiosString);
@@ -269,6 +305,19 @@ void setup() {
     currentStationIndex = 0;
     Serial.println("New radio configuration saved");
     request->send(200, "text/plain", "Settings updated");
+  });
+
+  server.on("/configuration", HTTP_GET, [](AsyncWebServerRequest *request) {
+    JsonDocument doc;
+    doc["ssid"] = wifi_ssid;
+    doc["password"] = wifi_password;
+    JsonArray array = doc.createNestedArray("radios");
+    for (int i = 0; i < radiosVector.size(); i++) {
+      array.add(radiosVector[i].c_str());
+    }
+    String jsonString;
+    serializeJson(doc, jsonString);
+    request->send_P(200, "application/json", jsonString.c_str());
   });
 
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
