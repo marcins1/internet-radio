@@ -257,9 +257,7 @@ bool buttonAlreadyPressed4 = false;
 bool buttonAlreadyPressed5 = false;
 int buttonState = 0;
 
-float volumeValues[] = {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7};
-int numberOfVolumeValues = sizeof(volumeValues) / sizeof(volumeValues[0]);
-int currentVolumeIndex = 0;
+float currentVolumeLevel = 1;
 
 char* stringToCharArray(String str) {
   int length = str.length() + 1;
@@ -334,18 +332,18 @@ void setup() {
 }
 
 void volumeDown() {
-    if (currentVolumeIndex != 0) {
-      currentVolumeIndex = currentVolumeIndex - 1;
-      volume.setVolume(volumeValues[currentVolumeIndex]);
-      Serial.println("VOLUME DOWN - " + String(volumeValues[currentVolumeIndex]));
+    if (currentVolumeLevel != 0) {
+      currentVolumeLevel -= 1;
+      volume.setVolume(currentVolumeLevel / 10);
+      Serial.println("VOLUME DOWN - " + String(currentVolumeLevel / 10));
     }
 }
 
 void volumeUp() {
-    if (currentVolumeIndex != numberOfVolumeValues - 1) {
-      currentVolumeIndex = currentVolumeIndex + 1;
-      volume.setVolume(volumeValues[currentVolumeIndex]);
-      Serial.println("VOLUME UP - " + String(volumeValues[currentVolumeIndex]));
+    if (currentVolumeLevel != 10) {
+      currentVolumeLevel += 1;
+      volume.setVolume(currentVolumeLevel / 10);
+      Serial.println("VOLUME UP - " + String(currentVolumeLevel / 10));
     }
 }
 
@@ -407,7 +405,8 @@ void modeSwitch() {
       i2s.begin(config);
       dec.begin();
       volume.begin(config);
-      volume.setVolume(volumeValues[currentVolumeIndex]);
+      currentVolumeLevel = 1;
+      volume.setVolume(currentVolumeLevel / 10);
       url.begin(radiosVector[currentStationIndex].c_str(), "audio/mp3");
     }
   } else {
